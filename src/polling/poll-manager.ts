@@ -1,0 +1,48 @@
+import type { Client } from "discord.js";
+import { loadConfig } from "../config.js";
+import { getLogger } from "../logger.js";
+import { pollQueues } from "./queue-poller.js";
+import { checkAvailability } from "./availability-checker.js";
+
+let queueInterval: ReturnType<typeof setInterval> | null = null;
+let availabilityInterval: ReturnType<typeof setInterval> | null = null;
+
+export function startPolling(client: Client): void {
+  const config = loadConfig();
+  const logger = getLogger();
+
+  const queueMs = config.POLL_INTERVAL_SECONDS * 1000;
+  const availabilityMs = config.AVAILABILITY_CHECK_INTERVAL_SECONDS * 1000;
+
+  logger.info(
+    { queueInterval: config.POLL_INTERVAL_SECONDS, availabilityInterval: config.AVAILABILITY_CHECK_INTERVAL_SECONDS },
+    "Starting polling",
+  );
+
+  queueInterval = setInterval(async () => {
+    try {
+      await pollQueues(client);
+    } catch (error) {
+      logger.error({ error }, "Queue poll error");
+    }
+  }, queueMs);
+
+  availabilityInterval = setInterval(async () => {
+    try {
+      await checkAvailability(client);
+    } catch (error) {
+      logger.error({ error }, "Availability check error");
+    }
+  }, availabilityMs);
+}
+
+export function stopPolling(): void {
+  if (queueInterval) {
+    clearInterval(queueInterval);
+    queueInterval = null;
+  }
+  if (availabilityInterval) {
+    clearInterval(availabilityInterval);
+    availabilityInterval = null;
+  }
+}
