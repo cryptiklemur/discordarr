@@ -63,7 +63,7 @@ export interface OverseerrTv {
   genres: { id: number; name: string }[];
   seasons: OverseerrSeason[];
   mediaInfo?: OverseerrMediaInfo;
-  externalIds: { imdbId?: string };
+  externalIds: { imdbId?: string; tvdbId?: number };
 }
 
 export interface OverseerrSeason {
@@ -119,18 +119,27 @@ export interface OverseerrUser {
 
 export const Permission = {
   ADMIN: 2,
-  MANAGE_REQUESTS: 4096,
-  REQUEST: 8,
-  AUTO_APPROVE: 16,
-  AUTO_APPROVE_MOVIE: 32,
-  AUTO_APPROVE_TV: 64,
-  REQUEST_4K: 128,
-  REQUEST_4K_MOVIE: 256,
-  REQUEST_4K_TV: 512,
-  AUTO_APPROVE_4K: 1024,
-  AUTO_APPROVE_4K_MOVIE: 2048,
-  AUTO_APPROVE_4K_TV: 4096,
+  MANAGE_USERS: 8,
+  MANAGE_REQUESTS: 16,
+  REQUEST: 32,
+  VOTE: 64,
+  AUTO_APPROVE: 128,
+  AUTO_APPROVE_MOVIE: 256,
+  AUTO_APPROVE_TV: 512,
+  REQUEST_4K: 1024,
+  REQUEST_4K_MOVIE: 2048,
+  REQUEST_4K_TV: 4096,
+  AUTO_APPROVE_4K: 32768,
+  AUTO_APPROVE_4K_MOVIE: 65536,
+  AUTO_APPROVE_4K_TV: 131072,
 } as const;
+
+export interface ServiceSettings {
+  id: number;
+  name: string;
+  is4k: boolean;
+  isDefault: boolean;
+}
 
 interface SearchResponse {
   results: OverseerrSearchResult[];
@@ -163,6 +172,7 @@ interface CreateRequestBody {
   mediaId: number;
   is4k?: boolean;
   seasons?: number[];
+  userId?: number;
 }
 
 class OverseerrService {
@@ -267,7 +277,7 @@ class OverseerrService {
         skip,
       });
 
-      for (const user of response.results) {
+      const checks = response.results.map(async (user) => {
         try {
           const notifSettings = await this.client.get<{ discordId?: string }>(
             `/api/v1/user/${user.id}/settings/notifications`,
@@ -277,9 +287,13 @@ class OverseerrService {
             return user;
           }
         } catch {
-          continue;
+          // skip
         }
-      }
+        return null;
+      });
+
+      const found = (await Promise.all(checks)).find((u) => u !== null);
+      if (found) return found;
 
       if (response.results.length === 0) break;
       if (page >= response.pageInfo.pages) break;
@@ -316,6 +330,37 @@ class OverseerrService {
       data,
     );
   }
+
+  async getUserNotificationSettings(userId: number): Promise<{ discordId?: string }> {
+    return this.client.get<{ discordId?: string }>(
+      `/api/v1/user/${userId}/settings/notifications`,
+    );
+  }
+
+  async getSonarrSettings(): Promise<ServiceSettings[]> {
+    return this.client.get<ServiceSettings[]>("/api/v1/settings/sonarr");
+  }
+
+  async getRadarrSettings(): Promise<ServiceSettings[]> {
+    return this.client.get<ServiceSettings[]>("/api/v1/settings/radarr");
+  }
+
+  async has4kService(mediaType: "movie" | "tv"): Promise<boolean> {
+    if (this._4kCache.has(mediaType)) return this._4kCache.get(mediaType)!;
+
+    try {
+      const settings = mediaType === "movie"
+        ? await this.getRadarrSettings()
+        : await this.getSonarrSettings();
+      const has4k = settings.some((s) => s.is4k);
+      this._4kCache.set(mediaType, has4k);
+      return has4k;
+    } catch {
+      return false;
+    }
+  }
+
+  private readonly _4kCache = new Map<string, boolean>();
 }
 
 let instance: OverseerrService | null = null;

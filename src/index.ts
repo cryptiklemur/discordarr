@@ -3,7 +3,7 @@ import { loadConfig } from "./config.js";
 import { getLogger } from "./logger.js";
 import { createClient } from "./client.js";
 import { loadCommands, getCommands } from "./commands/index.js";
-import { loadInteractions, routeInteraction } from "./interactions/index.js";
+import { loadInteractions, routeInteraction, routeModalSubmit } from "./interactions/index.js";
 import { startAuthServer, stopAuthServer } from "./auth/server.js";
 import { startPolling, stopPolling } from "./polling/poll-manager.js";
 import { hydrateRequestStore } from "./store/request-store.js";
@@ -69,6 +69,11 @@ async function main(): Promise<void> {
 
     if (interaction.isButton() || interaction.isStringSelectMenu()) {
       await routeInteraction(interaction);
+      return;
+    }
+
+    if (interaction.isModalSubmit()) {
+      await routeModalSubmit(interaction);
     }
   });
 

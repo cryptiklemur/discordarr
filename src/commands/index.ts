@@ -20,6 +20,7 @@ export async function loadCommands(): Promise<Collection<string, Command>> {
 
   const modules = [
     () => import("./request.js"),
+    () => import("./search.js"),
     () => import("./status.js"),
     () => import("./link.js"),
     () => import("./sonarr.js"),

@@ -14,7 +14,7 @@ const configSchema = z.object({
   RADARR_URL: z.string().url(),
   RADARR_API_KEY: z.string().min(1),
   PUBLIC_URL: z.string().url(),
-  POLL_INTERVAL_SECONDS: z.coerce.number().positive().default(30),
+  POLL_INTERVAL_SECONDS: z.coerce.number().positive().default(15),
   AVAILABILITY_CHECK_INTERVAL_SECONDS: z.coerce.number().positive().default(120),
   MAX_SEARCH_RESULTS: z.coerce.number().positive().max(25).default(25),
   LOG_LEVEL: z

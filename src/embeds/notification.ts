@@ -20,11 +20,17 @@ export function buildApprovedDmEmbed(
 export function buildDeniedDmEmbed(
   title: string,
   posterPath?: string,
+  reason?: string,
 ): EmbedBuilder {
+  let description = `Your request for **${title}** has been denied.`;
+  if (reason) {
+    description += `\n\n**Reason:** ${reason}`;
+  }
+
   const embed = new EmbedBuilder()
     .setColor(EmbedColor.DENIED)
     .setTitle("Request Denied")
-    .setDescription(`Your request for **${title}** has been denied.`);
+    .setDescription(description);
 
   if (posterPath) {
     embed.setThumbnail(`${TMDB_IMAGE_BASE}/${TMDB_POSTER_SIZE}${posterPath}`);

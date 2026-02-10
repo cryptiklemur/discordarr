@@ -124,6 +124,11 @@ class SonarrClient {
     return this.client.get<SonarrSeries>(`/api/v3/series/${id}`);
   }
 
+  async getSeriesByTvdbId(tvdbId: number): Promise<SonarrSeries | undefined> {
+    const results = await this.client.get<SonarrSeries[]>('/api/v3/series', { tvdbId });
+    return results[0];
+  }
+
   async lookupSeries(term: string): Promise<SonarrSeries[]> {
     return this.client.get<SonarrSeries[]>('/api/v3/series/lookup', { term });
   }

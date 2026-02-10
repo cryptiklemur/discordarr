@@ -3,9 +3,11 @@ import { loadConfig } from "../config.js";
 import { getLogger } from "../logger.js";
 import { pollQueues } from "./queue-poller.js";
 import { checkAvailability } from "./availability-checker.js";
+import { pollNewRequests } from "./request-poller.js";
 
 let queueInterval: ReturnType<typeof setInterval> | null = null;
 let availabilityInterval: ReturnType<typeof setInterval> | null = null;
+let requestPollInterval: ReturnType<typeof setInterval> | null = null;
 
 export function startPolling(client: Client): void {
   const config = loadConfig();
@@ -13,6 +15,7 @@ export function startPolling(client: Client): void {
 
   const queueMs = config.POLL_INTERVAL_SECONDS * 1000;
   const availabilityMs = config.AVAILABILITY_CHECK_INTERVAL_SECONDS * 1000;
+  const requestPollMs = availabilityMs;
 
   logger.info(
     { queueInterval: config.POLL_INTERVAL_SECONDS, availabilityInterval: config.AVAILABILITY_CHECK_INTERVAL_SECONDS },
@@ -34,6 +37,14 @@ export function startPolling(client: Client): void {
       logger.error({ error }, "Availability check error");
     }
   }, availabilityMs);
+
+  requestPollInterval = setInterval(async () => {
+    try {
+      await pollNewRequests(client);
+    } catch (error) {
+      logger.error({ error }, "Request poll error");
+    }
+  }, requestPollMs);
 }
 
 export function stopPolling(): void {
@@ -44,5 +55,9 @@ export function stopPolling(): void {
   if (availabilityInterval) {
     clearInterval(availabilityInterval);
     availabilityInterval = null;
+  }
+  if (requestPollInterval) {
+    clearInterval(requestPollInterval);
+    requestPollInterval = null;
   }
 }

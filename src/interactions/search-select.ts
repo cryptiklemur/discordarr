@@ -42,7 +42,7 @@ export default async function handleSearchSelect(
 
   try {
     const overseerr = getOverseerr();
-    const can4k = canRequest4k(overseerrUser, mediaType);
+    const can4k = canRequest4k(overseerrUser, mediaType) && await overseerr.has4kService(mediaType);
 
     if (mediaType === "movie") {
       const movie = await overseerr.getMovie(tmdbId);

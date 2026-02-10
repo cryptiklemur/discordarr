@@ -1,6 +1,7 @@
 import { getLogger } from "../logger.js";
 import { loadConfig } from "../config.js";
 import { completeLinkSession, getPendingLink } from "./link-flow.js";
+import { clearUserCache } from "../utils/permissions.js";
 
 export async function handleAuthCallback(
   url: URL,
@@ -62,6 +63,8 @@ export async function handleAuthCallback(
       completeLinkSession(state, { success: false, error: "Failed to update account" });
       return { status: 500, body: htmlResponse("Failed to link account", false) };
     }
+
+    clearUserCache(pending.discordId);
 
     logger.info(
       { discordId: pending.discordId, overseerrUser: user.displayName },

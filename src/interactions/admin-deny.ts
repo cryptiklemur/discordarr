@@ -1,29 +1,24 @@
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from "discord.js";
+import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, MessageFlags } from "discord.js";
 import type { ButtonInteraction, StringSelectMenuInteraction } from "discord.js";
-import { getOverseerr } from "../services/overseerr.js";
 import { getOverseerrUser, canManageRequests } from "../utils/permissions.js";
-import { getLogger } from "../logger.js";
-import { buildDeniedEmbed } from "../embeds/admin-request.js";
-import { buildDeniedDmEmbed } from "../embeds/notification.js";
+import { getPendingRequest } from "../store/request-store.js";
+import { CustomId } from "../utils/constants.js";
 
 export default async function handleAdminDeny(
   interaction: ButtonInteraction | StringSelectMenuInteraction,
   context: string,
 ): Promise<void> {
-  const logger = getLogger();
   const btn = interaction as ButtonInteraction;
-  const requestId = parseInt(context, 10);
+  const pendingId = parseInt(context, 10);
 
-  if (isNaN(requestId)) {
+  if (isNaN(pendingId)) {
     await btn.reply({ content: "Invalid request.", flags: MessageFlags.Ephemeral });
     return;
   }
 
-  await btn.deferUpdate();
-
   const overseerrUser = await getOverseerrUser(btn.user.id);
   if (!overseerrUser) {
-    await btn.followUp({
+    await btn.reply({
       content: "Please use `/link` to connect your Overseerr account first.",
       flags: MessageFlags.Ephemeral,
     });
@@ -31,81 +26,36 @@ export default async function handleAdminDeny(
   }
 
   if (!canManageRequests(overseerrUser)) {
-    await btn.followUp({
+    await btn.reply({
       content: "You don't have permission to deny requests.",
       flags: MessageFlags.Ephemeral,
     });
     return;
   }
 
-  try {
-    const overseerr = getOverseerr();
-    await overseerr.declineRequest(requestId);
-
-    const originalEmbed = btn.message.embeds[0];
-    if (originalEmbed) {
-      const updatedEmbed = buildDeniedEmbed(
-        EmbedBuilder.from(originalEmbed),
-        btn.user.username,
-      );
-
-      const disabledRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId("approve-disabled")
-          .setLabel("Approve")
-          .setStyle(ButtonStyle.Success)
-          .setDisabled(true),
-        new ButtonBuilder()
-          .setCustomId("denied-disabled")
-          .setLabel("Denied")
-          .setStyle(ButtonStyle.Danger)
-          .setDisabled(true),
-      );
-
-      await btn.editReply({
-        embeds: [updatedEmbed],
-        components: [disabledRow],
-      });
-    }
-
-    const request = await overseerr.getRequest(requestId);
-    const requesterDiscordId = request.requestedBy.settings?.discordId;
-
-    if (requesterDiscordId) {
-      try {
-        let title = "Unknown";
-        let posterPath: string | undefined;
-
-        if (request.type === "movie") {
-          const movie = await overseerr.getMovie(request.media.tmdbId);
-          title = movie.title;
-          posterPath = movie.posterPath;
-        } else {
-          const tv = await overseerr.getTv(request.media.tmdbId);
-          title = tv.name;
-          posterPath = tv.posterPath;
-        }
-
-        const requester = await btn.client.users.fetch(requesterDiscordId);
-        const dmEmbed = buildDeniedDmEmbed(title, posterPath);
-        await requester.send({ embeds: [dmEmbed] });
-      } catch {
-        // DMs may be disabled
-      }
-    }
-
-    if (btn.message.thread) {
-      await btn.message.thread
-        .send(`Request denied by ${btn.user.username}.`)
-        .catch(() => {});
-    }
-
-    logger.info({ requestId, admin: btn.user.id }, "Request denied");
-  } catch (error) {
-    logger.error({ error, requestId }, "Failed to deny request");
-    await btn.followUp({
-      content: "Failed to deny request.",
+  const pending = getPendingRequest(pendingId);
+  if (!pending) {
+    await btn.reply({
+      content: "This request is no longer pending.",
       flags: MessageFlags.Ephemeral,
     });
+    return;
   }
+
+  const modal = new ModalBuilder()
+    .setCustomId(`${CustomId.DENY_REASON}:${pendingId}`)
+    .setTitle("Deny Request")
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("reason")
+          .setLabel("Reason (optional)")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(false)
+          .setMaxLength(256)
+          .setPlaceholder("Why is this request being denied?"),
+      ),
+    );
+
+  await btn.showModal(modal);
 }

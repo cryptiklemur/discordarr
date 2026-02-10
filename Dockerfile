@@ -12,5 +12,6 @@ COPY package.json ./
 COPY src ./src
 
 EXPOSE 3000
+VOLUME /app/data
 
 CMD ["bun", "src/index.ts"]

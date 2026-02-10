@@ -5,6 +5,7 @@ export const CustomId = {
   REQUEST_4K: "request-4k",
   ADMIN_APPROVE: "admin-approve",
   ADMIN_DENY: "admin-deny",
+  DENY_REASON: "deny-reason",
   QUEUE_RETRY: "queue-retry",
   QUEUE_REMOVE: "queue-remove",
   LIBRARY_DETAILS: "library-details",

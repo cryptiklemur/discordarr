@@ -30,6 +30,7 @@ export interface RadarrQueueItem {
 export interface RadarrMovie {
   id: number;
   title: string;
+  originalTitle?: string;
   sortTitle: string;
   status: string;
   overview?: string;
