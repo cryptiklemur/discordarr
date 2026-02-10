@@ -1,4 +1,5 @@
 import { loadConfig } from "../config.js";
+import { getLogger } from "../logger.js";
 import { ApiClient } from "./http.js";
 
 export interface OverseerrSearchResult {
@@ -183,6 +184,44 @@ class OverseerrService {
     });
   }
 
+  async searchByType(
+    query: string,
+    mediaType: "movie" | "tv",
+    limit: number = 25,
+  ): Promise<OverseerrSearchResult[]> {
+    const logger = getLogger();
+    const results: OverseerrSearchResult[] = [];
+    const seen = new Set<number>();
+    const maxPages = 5;
+
+    for (let page = 1; page <= maxPages; page++) {
+      const response = await this.client.get<SearchResponse>("/api/v1/search", {
+        query,
+        page,
+        language: "en",
+      });
+
+      const pageMatches: string[] = [];
+      for (const r of response.results) {
+        if (r.mediaType === mediaType && !seen.has(r.id)) {
+          seen.add(r.id);
+          results.push(r);
+          pageMatches.push(r.title || r.name || "?");
+          if (results.length >= limit) return results;
+        }
+      }
+
+      logger.info(
+        { page, totalPages: response.totalPages, pageResults: response.results.length, matches: pageMatches, runningTotal: results.length },
+        "searchByType page",
+      );
+
+      if (page >= response.totalPages) break;
+    }
+
+    return results;
+  }
+
   async getMovie(tmdbId: number): Promise<OverseerrMovie> {
     return this.client.get<OverseerrMovie>(`/api/v1/movie/${tmdbId}`);
   }
@@ -225,6 +264,7 @@ class OverseerrService {
   }
 
   async getUserByDiscordId(discordId: string): Promise<OverseerrUser | null> {
+    const logger = getLogger();
     let page = 1;
     const take = 100;
 
@@ -235,16 +275,26 @@ class OverseerrService {
         skip,
       });
 
-      for (let i = 0; i < response.results.length; i++) {
-        if (response.results[i].settings?.discordId === discordId) {
-          return response.results[i];
+      for (const user of response.results) {
+        try {
+          const notifSettings = await this.client.get<{ discordId?: string }>(
+            `/api/v1/user/${user.id}/settings/notifications`,
+          );
+          if (notifSettings.discordId === discordId) {
+            user.settings = { ...user.settings, discordId };
+            return user;
+          }
+        } catch {
+          continue;
         }
       }
 
+      if (response.results.length === 0) break;
       if (page >= response.pageInfo.pages) break;
       page++;
     }
 
+    logger.warn({ discordId }, "No Overseerr user found with matching discordId");
     return null;
   }
 

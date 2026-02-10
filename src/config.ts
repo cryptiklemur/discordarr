@@ -16,7 +16,7 @@ const configSchema = z.object({
   PUBLIC_URL: z.string().url(),
   POLL_INTERVAL_SECONDS: z.coerce.number().positive().default(30),
   AVAILABILITY_CHECK_INTERVAL_SECONDS: z.coerce.number().positive().default(120),
-  MAX_SEARCH_RESULTS: z.coerce.number().positive().max(25).default(10),
+  MAX_SEARCH_RESULTS: z.coerce.number().positive().max(25).default(25),
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace"])
     .default("info"),

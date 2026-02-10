@@ -1,24 +1,16 @@
-FROM node:22-alpine AS base
-RUN corepack enable && corepack prepare pnpm@latest --activate
+FROM oven/bun:1-alpine AS base
 WORKDIR /app
 
 FROM base AS deps
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile --production
 
-FROM base AS build
-COPY --from=deps /app/node_modules ./node_modules
-COPY package.json pnpm-lock.yaml tsconfig.json ./
-COPY src ./src
-RUN pnpm build
-RUN pnpm prune --prod
-
-FROM node:22-alpine AS runtime
+FROM base AS runtime
 WORKDIR /app
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/package.json ./
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json ./
+COPY src ./src
 
 EXPOSE 3000
 
-CMD ["node", "dist/index.js"]
+CMD ["bun", "src/index.ts"]

@@ -34,14 +34,19 @@ export class ApiClient {
       retries = 2,
     } = options;
 
-    const url = new URL(`${this.baseUrl}${path}`);
+    let urlStr = `${this.baseUrl}${path}`;
     if (params) {
+      const parts: string[] = [];
       for (const [key, value] of Object.entries(params)) {
         if (value !== undefined) {
-          url.searchParams.set(key, String(value));
+          parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
         }
       }
+      if (parts.length > 0) {
+        urlStr += `?${parts.join("&")}`;
+      }
     }
+    const url = new URL(urlStr);
 
     const headers: Record<string, string> = {
       [this.headerName]: this.apiKey,
@@ -94,6 +99,12 @@ export class ApiClient {
         if (error instanceof Error && error.name === "AbortError") {
           lastError = new Error(`API ${method} ${path} timed out`);
           logger.warn({ attempt, path }, "API request timed out");
+          continue;
+        }
+        if (error instanceof AggregateError) {
+          const messages = error.errors.map((e: unknown) => e instanceof Error ? e.message : String(e)).join("; ");
+          lastError = new Error(`API ${method} ${path} connection failed: ${messages}`);
+          logger.warn({ attempt, path, errors: messages }, "API connection failed (AggregateError)");
           continue;
         }
         if (

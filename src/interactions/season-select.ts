@@ -1,3 +1,4 @@
+import { MessageFlags } from "discord.js";
 import type { ButtonInteraction, StringSelectMenuInteraction, TextChannel } from "discord.js";
 import { getOverseerr } from "../services/overseerr.js";
 import { getOverseerrUser, canAutoApprove } from "../utils/permissions.js";
@@ -14,7 +15,7 @@ export default async function handleSeasonSelect(
   const logger = getLogger();
   const selectInteraction = interaction as StringSelectMenuInteraction;
 
-  await selectInteraction.deferReply({ ephemeral: true });
+  await selectInteraction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const [tmdbIdStr, flag] = context.split(":");
   const tmdbId = parseInt(tmdbIdStr, 10);

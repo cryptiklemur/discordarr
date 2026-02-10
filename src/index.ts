@@ -1,4 +1,4 @@
-import { Events } from "discord.js";
+import { Events, MessageFlags } from "discord.js";
 import { loadConfig } from "./config.js";
 import { getLogger } from "./logger.js";
 import { createClient } from "./client.js";
@@ -49,8 +49,20 @@ async function main(): Promise<void> {
           : interaction.reply.bind(interaction);
         await reply({
           content: "An error occurred while executing this command.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         }).catch(() => {});
+      }
+      return;
+    }
+
+    if (interaction.isAutocomplete()) {
+      const command = getCommands().get(interaction.commandName);
+      if (command?.autocomplete) {
+        try {
+          await command.autocomplete(interaction);
+        } catch {
+          // Silently ignore - typically "Unknown interaction" from slow API responses
+        }
       }
       return;
     }

@@ -1,3 +1,4 @@
+import { MessageFlags } from "discord.js";
 import type { ButtonInteraction, StringSelectMenuInteraction } from "discord.js";
 import { getOverseerr } from "../services/overseerr.js";
 import { getOverseerrUser, canRequest4k } from "../utils/permissions.js";
@@ -16,10 +17,16 @@ export default async function handleSearchSelect(
   const mediaType = context as "movie" | "tv";
   const tmdbId = parseInt(selectInteraction.values[0], 10);
 
+  await selectInteraction.editReply({
+    content: "Loading details...",
+    embeds: [],
+    components: [],
+  });
+
   if (isNaN(tmdbId)) {
     await selectInteraction.followUp({
       content: "Invalid selection. Please try again.",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -28,7 +35,7 @@ export default async function handleSearchSelect(
   if (!overseerrUser) {
     await selectInteraction.followUp({
       content: "Please use `/link` to connect your Overseerr account first.",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -41,6 +48,7 @@ export default async function handleSearchSelect(
       const movie = await overseerr.getMovie(tmdbId);
       const result = buildMovieDetailsEmbed(movie, can4k);
       await selectInteraction.editReply({
+        content: "",
         embeds: result.embeds,
         components: result.components,
       });
@@ -48,6 +56,7 @@ export default async function handleSearchSelect(
       const tv = await overseerr.getTv(tmdbId);
       const result = buildTvDetailsEmbed(tv, can4k);
       await selectInteraction.editReply({
+        content: "",
         embeds: result.embeds,
         components: result.components,
       });
@@ -56,7 +65,7 @@ export default async function handleSearchSelect(
     logger.error({ error, tmdbId, mediaType }, "Failed to load media details");
     await selectInteraction.followUp({
       content: "Failed to load media details. Please try again.",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 }

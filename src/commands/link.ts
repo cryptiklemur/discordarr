@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import type { Command } from "./index.js";
 import { loadConfig } from "../config.js";
 import { createLinkSession, registerLinkSession } from "../auth/link-flow.js";
@@ -19,7 +19,7 @@ const command: Command = {
     if (existingUser) {
       await interaction.reply({
         content: `Your account is already linked as **${existingUser.displayName}**.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -29,7 +29,7 @@ const command: Command = {
 
     await interaction.reply({
       content: `Click the link below to connect your Discord account to Overseerr:\n\n[Link Account](${linkUrl})\n\nThis link expires in 5 minutes.`,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
 
     registerLinkSession(state, interaction.user.id, async (result) => {

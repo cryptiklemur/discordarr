@@ -1,3 +1,4 @@
+import { MessageFlags } from "discord.js";
 import type { ButtonInteraction, StringSelectMenuInteraction } from "discord.js";
 import { getSonarr } from "../services/sonarr.js";
 import { getRadarr } from "../services/radarr.js";
@@ -12,7 +13,7 @@ export default async function handleQueueRetry(
   const [service, itemId] = context.split(":");
   const id = parseInt(itemId, 10);
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const user = await getOverseerrUser(interaction.user.id);
   if (!user || !canManageRequests(user)) {

@@ -38,13 +38,13 @@ export function buildSearchResultsEmbed(
   }
 
   const options = filtered.map((result) => {
-    const title = result.title ?? result.name ?? "Unknown";
+    const title = result.title || result.name || "Unknown";
     const year =
       mediaType === "movie"
         ? formatYear(result.releaseDate)
         : formatYear(result.firstAirDate);
     const label = truncate(`${title} (${year})`, 100);
-    const description = truncate(result.overview ?? "No description", 100);
+    const description = truncate(result.overview || "No description available", 100);
 
     return {
       label,

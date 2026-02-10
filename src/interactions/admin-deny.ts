@@ -1,5 +1,5 @@
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from "discord.js";
 import type { ButtonInteraction, StringSelectMenuInteraction } from "discord.js";
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { getOverseerr } from "../services/overseerr.js";
 import { getOverseerrUser, canManageRequests } from "../utils/permissions.js";
 import { getLogger } from "../logger.js";
@@ -15,7 +15,7 @@ export default async function handleAdminDeny(
   const requestId = parseInt(context, 10);
 
   if (isNaN(requestId)) {
-    await btn.reply({ content: "Invalid request.", ephemeral: true });
+    await btn.reply({ content: "Invalid request.", flags: MessageFlags.Ephemeral });
     return;
   }
 
@@ -25,7 +25,7 @@ export default async function handleAdminDeny(
   if (!overseerrUser) {
     await btn.followUp({
       content: "Please use `/link` to connect your Overseerr account first.",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -33,7 +33,7 @@ export default async function handleAdminDeny(
   if (!canManageRequests(overseerrUser)) {
     await btn.followUp({
       content: "You don't have permission to deny requests.",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -105,7 +105,7 @@ export default async function handleAdminDeny(
     logger.error({ error, requestId }, "Failed to deny request");
     await btn.followUp({
       content: "Failed to deny request.",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 }

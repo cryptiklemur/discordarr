@@ -1,5 +1,5 @@
+import { ChannelType, MessageFlags } from "discord.js";
 import type { ButtonInteraction, StringSelectMenuInteraction, TextChannel } from "discord.js";
-import { ChannelType } from "discord.js";
 import { getOverseerr } from "../services/overseerr.js";
 import type { OverseerrMovie, OverseerrTv } from "../services/overseerr.js";
 import { getOverseerrUser, canAutoApprove } from "../utils/permissions.js";
@@ -23,7 +23,7 @@ export default async function handleRequestConfirm(
   const is4k = btn.customId.startsWith("request-4k");
 
   if ((mediaType !== "movie" && mediaType !== "tv") || isNaN(tmdbId)) {
-    await btn.followUp({ content: "Invalid request.", ephemeral: true });
+    await btn.followUp({ content: "Invalid request.", flags: MessageFlags.Ephemeral });
     return;
   }
 
@@ -31,7 +31,7 @@ export default async function handleRequestConfirm(
   if (!overseerrUser) {
     await btn.followUp({
       content: "Please use `/link` to connect your Overseerr account first.",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -67,7 +67,7 @@ export default async function handleRequestConfirm(
       await overseerr.approveRequest(request.id);
       await btn.followUp({
         content: `Your request for **${title}** has been auto-approved!${is4k ? " (4K)" : ""}`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
 
       trackRequest({
@@ -93,7 +93,7 @@ export default async function handleRequestConfirm(
     if (!channel) {
       await btn.followUp({
         content: "Request created but could not post to request channel.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -130,7 +130,7 @@ export default async function handleRequestConfirm(
 
     await btn.followUp({
       content: `Your request for **${title}** has been submitted!${is4k ? " (4K)" : ""}`,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
 
     try {
@@ -143,7 +143,7 @@ export default async function handleRequestConfirm(
     logger.error({ error, mediaType, tmdbId }, "Failed to create request");
     await btn.followUp({
       content: "Failed to create request. Please try again.",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 }

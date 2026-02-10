@@ -1,5 +1,6 @@
 import {
   Collection,
+  type AutocompleteInteraction,
   type ChatInputCommandInteraction,
   type RESTPostAPIChatInputApplicationCommandsJSONBody,
 } from "discord.js";
@@ -8,6 +9,7 @@ import { getLogger } from "../logger.js";
 export interface Command {
   data: RESTPostAPIChatInputApplicationCommandsJSONBody;
   execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
+  autocomplete?: (interaction: AutocompleteInteraction) => Promise<void>;
 }
 
 const commands = new Collection<string, Command>();

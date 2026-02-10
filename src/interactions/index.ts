@@ -1,3 +1,4 @@
+import { MessageFlags } from "discord.js";
 import type {
   ButtonInteraction,
   StringSelectMenuInteraction,
@@ -69,7 +70,7 @@ export async function routeInteraction(
       : interaction.reply.bind(interaction);
     await reply({
       content: "An error occurred processing this interaction.",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     }).catch(() => {});
   }
 }

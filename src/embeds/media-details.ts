@@ -26,13 +26,24 @@ export function buildMovieDetailsEmbed(
   const status = movie.mediaInfo?.status ?? MediaStatus.UNKNOWN;
   const alreadyRequested =
     status === MediaStatus.PENDING || status === MediaStatus.PROCESSING;
-  const alreadyAvailable = status === MediaStatus.AVAILABLE;
+  const alreadyAvailable =
+    status === MediaStatus.AVAILABLE || status === MediaStatus.PARTIALLY_AVAILABLE;
+
+  let color: number = EmbedColor.INFO;
+  let statusBanner = "";
+  if (alreadyAvailable) {
+    color = EmbedColor.AVAILABLE;
+    statusBanner = "**This movie is already available in your library.**\n\n";
+  } else if (alreadyRequested) {
+    color = EmbedColor.PENDING;
+    statusBanner = "**This movie has already been requested and is pending.**\n\n";
+  }
 
   const embed = new EmbedBuilder()
-    .setColor(alreadyAvailable ? EmbedColor.AVAILABLE : EmbedColor.INFO)
+    .setColor(color)
     .setTitle(movie.title)
     .setURL(`https://www.themoviedb.org/movie/${movie.id}`)
-    .setDescription(truncate(movie.overview, 1024));
+    .setDescription(`${statusBanner}${truncate(movie.overview, 1024 - statusBanner.length)}`);
 
   if (movie.posterPath) {
     embed.setThumbnail(`${TMDB_IMAGE_BASE}/${TMDB_POSTER_SIZE}${movie.posterPath}`);
@@ -70,12 +81,6 @@ export function buildMovieDetailsEmbed(
       inline: false,
     });
   }
-  if (alreadyAvailable) {
-    fields.push({ name: "Status", value: "Available", inline: true });
-  } else if (alreadyRequested) {
-    fields.push({ name: "Status", value: "Already Requested", inline: true });
-  }
-
   embed.addFields(fields);
 
   const row = new ActionRowBuilder<ButtonBuilder>();
@@ -112,13 +117,26 @@ export function buildTvDetailsEmbed(
   components: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[];
 } {
   const status = tv.mediaInfo?.status ?? MediaStatus.UNKNOWN;
-  const alreadyAvailable = status === MediaStatus.AVAILABLE;
+  const alreadyRequested =
+    status === MediaStatus.PENDING || status === MediaStatus.PROCESSING;
+  const alreadyAvailable =
+    status === MediaStatus.AVAILABLE || status === MediaStatus.PARTIALLY_AVAILABLE;
+
+  let color: number = EmbedColor.INFO;
+  let statusBanner = "";
+  if (alreadyAvailable) {
+    color = EmbedColor.AVAILABLE;
+    statusBanner = "**This show is already available in your library.**\n\n";
+  } else if (alreadyRequested) {
+    color = EmbedColor.PENDING;
+    statusBanner = "**This show has already been requested and is pending.**\n\n";
+  }
 
   const embed = new EmbedBuilder()
-    .setColor(alreadyAvailable ? EmbedColor.AVAILABLE : EmbedColor.INFO)
+    .setColor(color)
     .setTitle(tv.name)
     .setURL(`https://www.themoviedb.org/tv/${tv.id}`)
-    .setDescription(truncate(tv.overview, 1024));
+    .setDescription(`${statusBanner}${truncate(tv.overview, 1024 - statusBanner.length)}`);
 
   if (tv.posterPath) {
     embed.setThumbnail(`${TMDB_IMAGE_BASE}/${TMDB_POSTER_SIZE}${tv.posterPath}`);
@@ -159,10 +177,6 @@ export function buildTvDetailsEmbed(
       inline: false,
     });
   }
-  if (alreadyAvailable) {
-    fields.push({ name: "Status", value: "Available", inline: true });
-  }
-
   embed.addFields(fields);
 
   if (alreadyAvailable) {

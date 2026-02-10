@@ -1,3 +1,4 @@
+import { MessageFlags } from "discord.js";
 import type { ButtonInteraction, StringSelectMenuInteraction } from "discord.js";
 import { getSonarr } from "../services/sonarr.js";
 import { getRadarr } from "../services/radarr.js";
@@ -30,7 +31,7 @@ export default async function handleLibraryDetails(
     logger.error({ error, service, selectedId }, "Failed to get library details");
     await interaction.followUp({
       content: "Failed to load details.",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 }

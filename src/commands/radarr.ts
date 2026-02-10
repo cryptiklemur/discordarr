@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import type { Command } from "./index.js";
 import { getRadarr } from "../services/radarr.js";
 import { getOverseerrUser, canManageRequests } from "../utils/permissions.js";
@@ -58,7 +58,7 @@ const command: Command = {
     const logger = getLogger();
     const subcommand = interaction.options.getSubcommand();
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const user = await getOverseerrUser(interaction.user.id);
     if (!user || !canManageRequests(user)) {
