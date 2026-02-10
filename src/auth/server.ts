@@ -26,8 +26,8 @@ export function startAuthServer(client: Client): void {
       return;
     }
 
-    res.writeHead(404, { "Content-Type": "text/plain" });
-    res.end("Not Found");
+    res.writeHead(302, { Location: config.PUBLIC_OVERSEERR_URL ?? config.OVERSEERR_URL });
+    res.end();
   });
 
   server.listen(3000, () => {
