@@ -80,54 +80,42 @@ export function buildQueueEmbed(
   }
 
   const components: ActionRowBuilder<ButtonBuilder>[] = [];
-  const maxButtonRows = 5;
-  let currentRow: ButtonBuilder[] = [];
-  let rowCount = 0;
 
   for (const item of displayItems) {
-    if (rowCount >= maxButtonRows) {
-      break;
-    }
+    if (components.length >= 4) break;
 
     const hasIssue = item.trackedDownloadStatus === "warning" || item.trackedDownloadStatus === "error";
 
-    const buttons: ButtonBuilder[] = [];
+    let shortTitle: string;
+    if ("movieId" in item && item.movie) {
+      shortTitle = truncate(item.movie.title, 60);
+    } else if ("seriesId" in item && item.series) {
+      const ep = item.episode;
+      const epInfo = ep ? formatSeasonEpisode(ep.seasonNumber, ep.episodeNumber) : "";
+      shortTitle = truncate(`${item.series.title} ${epInfo}`.trim(), 60);
+    } else {
+      shortTitle = truncate(item.title, 60);
+    }
+
+    const row = new ActionRowBuilder<ButtonBuilder>();
 
     if (hasIssue) {
-      buttons.push(
+      row.addComponents(
         new ButtonBuilder()
           .setCustomId(`${CustomId.QUEUE_RETRY}:${service}:${item.id}`)
-          .setLabel("Retry")
-          .setStyle(ButtonStyle.Primary)
+          .setLabel(truncate(`Retry: ${shortTitle}`, 80))
+          .setStyle(ButtonStyle.Primary),
       );
     }
 
-    buttons.push(
+    row.addComponents(
       new ButtonBuilder()
         .setCustomId(`${CustomId.QUEUE_REMOVE}:${service}:${item.id}`)
-        .setLabel("Remove")
-        .setStyle(ButtonStyle.Danger)
+        .setLabel(truncate(`Remove: ${shortTitle}`, 80))
+        .setStyle(ButtonStyle.Danger),
     );
 
-    if (currentRow.length + buttons.length <= 5) {
-      currentRow.push(...buttons);
-    } else {
-      if (currentRow.length > 0) {
-        components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(currentRow));
-        rowCount++;
-        currentRow = [];
-      }
-
-      if (rowCount < maxButtonRows) {
-        currentRow.push(...buttons);
-      } else {
-        break;
-      }
-    }
-  }
-
-  if (currentRow.length > 0 && rowCount < maxButtonRows) {
-    components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(currentRow));
+    components.push(row);
   }
 
   return { embeds: [embed], components };

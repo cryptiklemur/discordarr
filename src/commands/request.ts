@@ -1,7 +1,7 @@
 import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import type { Command } from "./index.js";
 import { getOverseerr } from "../services/overseerr.js";
-import { getOverseerrUser, canRequest4k } from "../utils/permissions.js";
+import { getOverseerrUser } from "../utils/permissions.js";
 import { loadConfig } from "../config.js";
 import { buildSearchResultsEmbed } from "../embeds/search-results.js";
 import { getLogger } from "../logger.js";
@@ -96,11 +96,6 @@ const command: Command = {
 
     try {
       const allResults = await getOverseerr().searchByType(query, subcommand, config.MAX_SEARCH_RESULTS);
-
-      logger.info(
-        { query, subcommand, resultCount: allResults.length, titles: allResults.map((r) => `${r.title || r.name} (${r.id})`) },
-        "Search results",
-      );
 
       const { embeds, components } = buildSearchResultsEmbed(
         query,

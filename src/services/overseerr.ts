@@ -189,7 +189,6 @@ class OverseerrService {
     mediaType: "movie" | "tv",
     limit: number = 25,
   ): Promise<OverseerrSearchResult[]> {
-    const logger = getLogger();
     const results: OverseerrSearchResult[] = [];
     const seen = new Set<number>();
     const maxPages = 5;
@@ -201,20 +200,13 @@ class OverseerrService {
         language: "en",
       });
 
-      const pageMatches: string[] = [];
       for (const r of response.results) {
         if (r.mediaType === mediaType && !seen.has(r.id)) {
           seen.add(r.id);
           results.push(r);
-          pageMatches.push(r.title || r.name || "?");
           if (results.length >= limit) return results;
         }
       }
-
-      logger.info(
-        { page, totalPages: response.totalPages, pageResults: response.results.length, matches: pageMatches, runningTotal: results.length },
-        "searchByType page",
-      );
 
       if (page >= response.totalPages) break;
     }
