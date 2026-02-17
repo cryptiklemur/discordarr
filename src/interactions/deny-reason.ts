@@ -1,6 +1,7 @@
 import { EmbedBuilder, MessageFlags } from "discord.js";
 import type { ModalSubmitInteraction } from "discord.js";
 import { getOverseerr } from "../services/overseerr.js";
+import { getOverseerrUser, canManageRequests } from "../utils/permissions.js";
 import { getLogger } from "../logger.js";
 import { buildDeniedEmbed } from "../embeds/admin-request.js";
 import { buildDeniedDmEmbed } from "../embeds/notification.js";
@@ -15,6 +16,15 @@ export default async function handleDenyReason(
 
   if (isNaN(pendingId)) {
     await interaction.reply({ content: "Invalid request.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+
+  const overseerrUser = await getOverseerrUser(interaction.user.id);
+  if (!overseerrUser || !canManageRequests(overseerrUser)) {
+    await interaction.reply({
+      content: "You don't have permission to deny requests.",
+      flags: MessageFlags.Ephemeral,
+    });
     return;
   }
 

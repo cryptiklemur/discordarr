@@ -7,6 +7,7 @@ const configSchema = z.object({
   REQUEST_CHANNEL_ID: z.string().min(1),
   MOVIE_CHANNEL_ID: z.string().optional(),
   TV_CHANNEL_ID: z.string().optional(),
+  PENDING_CHANNEL_ID: z.string().optional(),
   OVERSEERR_URL: z.string().url(),
   PUBLIC_OVERSEERR_URL: z.string().url().optional(),
   OVERSEERR_API_KEY: z.string().min(1),

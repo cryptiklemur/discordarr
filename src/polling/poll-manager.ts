@@ -5,9 +5,25 @@ import { pollQueues } from "./queue-poller.js";
 import { checkAvailability } from "./availability-checker.js";
 import { pollNewRequests } from "./request-poller.js";
 
-let queueInterval: ReturnType<typeof setInterval> | null = null;
-let availabilityInterval: ReturnType<typeof setInterval> | null = null;
-let requestPollInterval: ReturnType<typeof setInterval> | null = null;
+let stopped = false;
+
+function scheduleLoop(fn: () => Promise<void>, intervalMs: number, label: string): void {
+  const logger = getLogger();
+
+  const run = async () => {
+    if (stopped) return;
+    try {
+      await fn();
+    } catch (error) {
+      logger.error({ error }, `${label} error`);
+    }
+    if (!stopped) {
+      setTimeout(run, intervalMs);
+    }
+  };
+
+  setTimeout(run, intervalMs);
+}
 
 export function startPolling(client: Client): void {
   const config = loadConfig();
@@ -21,44 +37,15 @@ export function startPolling(client: Client): void {
     "Starting polling",
   );
 
+  stopped = false;
+
   pollNewRequests(client).catch((error) => logger.error({ error }, "Initial request poll error"));
 
-  queueInterval = setInterval(async () => {
-    try {
-      await pollQueues(client);
-    } catch (error) {
-      logger.error({ error }, "Queue poll error");
-    }
-  }, queueMs);
-
-  availabilityInterval = setInterval(async () => {
-    try {
-      await checkAvailability(client);
-    } catch (error) {
-      logger.error({ error }, "Availability check error");
-    }
-  }, availabilityMs);
-
-  requestPollInterval = setInterval(async () => {
-    try {
-      await pollNewRequests(client);
-    } catch (error) {
-      logger.error({ error }, "Request poll error");
-    }
-  }, queueMs);
+  scheduleLoop(() => pollQueues(client), queueMs, "Queue poll");
+  scheduleLoop(() => checkAvailability(client), availabilityMs, "Availability check");
+  scheduleLoop(() => pollNewRequests(client), queueMs, "Request poll");
 }
 
 export function stopPolling(): void {
-  if (queueInterval) {
-    clearInterval(queueInterval);
-    queueInterval = null;
-  }
-  if (availabilityInterval) {
-    clearInterval(availabilityInterval);
-    availabilityInterval = null;
-  }
-  if (requestPollInterval) {
-    clearInterval(requestPollInterval);
-    requestPollInterval = null;
-  }
+  stopped = true;
 }

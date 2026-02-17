@@ -183,10 +183,10 @@ async function pollUnpostedPendingRequests(client: Client, logger: ReturnType<ty
       }
 
       const config = loadConfig();
-      const channelId =
-        pending.mediaType === "movie"
+      const channelId = config.PENDING_CHANNEL_ID
+        ?? (pending.mediaType === "movie"
           ? config.MOVIE_CHANNEL_ID ?? config.REQUEST_CHANNEL_ID
-          : config.TV_CHANNEL_ID ?? config.REQUEST_CHANNEL_ID;
+          : config.TV_CHANNEL_ID ?? config.REQUEST_CHANNEL_ID);
 
       const channel = (await client.channels.fetch(channelId)) as TextChannel | null;
       if (!channel) continue;
