@@ -74,9 +74,14 @@ function migrateNullableDiscordUserId(db: Database): void {
       channel_id TEXT,
       message_id TEXT,
       thread_id TEXT,
+      pending_channel_id TEXT,
+      pending_message_id TEXT,
       overseerr_request_id INTEGER
     )`);
-    db.run("INSERT INTO pending_requests_new SELECT * FROM pending_requests");
+    db.run(`INSERT INTO pending_requests_new
+      (id, tmdb_id, media_type, discord_user_id, overseerr_user_id, is_4k, seasons, title, poster_path, channel_id, message_id, thread_id, overseerr_request_id)
+      SELECT id, tmdb_id, media_type, discord_user_id, overseerr_user_id, is_4k, seasons, title, poster_path, channel_id, message_id, thread_id, overseerr_request_id
+      FROM pending_requests`);
     db.run("DROP TABLE pending_requests");
     db.run("ALTER TABLE pending_requests_new RENAME TO pending_requests");
 
@@ -123,6 +128,8 @@ function getDb(): Database {
       channel_id TEXT,
       message_id TEXT,
       thread_id TEXT,
+      pending_channel_id TEXT,
+      pending_message_id TEXT,
       overseerr_request_id INTEGER
     )
   `);
@@ -135,6 +142,18 @@ function getDb(): Database {
 
   try {
     db.run("ALTER TABLE tracked_requests ADD COLUMN tvdb_id INTEGER");
+  } catch {
+    // column already exists
+  }
+
+  try {
+    db.run("ALTER TABLE pending_requests ADD COLUMN pending_channel_id TEXT");
+  } catch {
+    // column already exists
+  }
+
+  try {
+    db.run("ALTER TABLE pending_requests ADD COLUMN pending_message_id TEXT");
   } catch {
     // column already exists
   }
@@ -228,6 +247,8 @@ export interface PendingRequest {
   channelId?: string;
   messageId?: string;
   threadId?: string;
+  pendingChannelId?: string;
+  pendingMessageId?: string;
   overseerrRequestId?: number;
 }
 
@@ -244,6 +265,8 @@ interface PendingDbRow {
   channel_id: string | null;
   message_id: string | null;
   thread_id: string | null;
+  pending_channel_id: string | null;
+  pending_message_id: string | null;
   overseerr_request_id: number | null;
 }
 
@@ -261,6 +284,8 @@ function rowToPending(row: PendingDbRow): PendingRequest {
     channelId: row.channel_id ?? undefined,
     messageId: row.message_id ?? undefined,
     threadId: row.thread_id ?? undefined,
+    pendingChannelId: row.pending_channel_id ?? undefined,
+    pendingMessageId: row.pending_message_id ?? undefined,
     overseerrRequestId: row.overseerr_request_id ?? undefined,
   };
 }
@@ -268,8 +293,8 @@ function rowToPending(row: PendingDbRow): PendingRequest {
 export function createPendingRequest(pending: Omit<PendingRequest, "id">): number {
   const result = getDb().run(
     `INSERT INTO pending_requests
-      (tmdb_id, media_type, discord_user_id, overseerr_user_id, is_4k, seasons, title, poster_path, channel_id, message_id, thread_id, overseerr_request_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (tmdb_id, media_type, discord_user_id, overseerr_user_id, is_4k, seasons, title, poster_path, channel_id, message_id, thread_id, pending_channel_id, pending_message_id, overseerr_request_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       pending.tmdbId,
       pending.mediaType,
@@ -282,6 +307,8 @@ export function createPendingRequest(pending: Omit<PendingRequest, "id">): numbe
       pending.channelId ?? null,
       pending.messageId ?? null,
       pending.threadId ?? null,
+      pending.pendingChannelId ?? null,
+      pending.pendingMessageId ?? null,
       pending.overseerrRequestId ?? null,
     ],
   );
@@ -307,10 +334,17 @@ export function getUnpostedPendingRequests(): PendingRequest[] {
   return rows.map(rowToPending);
 }
 
-export function updatePendingMessage(id: number, channelId: string, messageId: string, threadId?: string): void {
+export function updatePendingMessage(
+  id: number,
+  channelId: string,
+  messageId: string,
+  threadId?: string,
+  pendingChannelId?: string,
+  pendingMessageId?: string,
+): void {
   getDb().run(
-    "UPDATE pending_requests SET channel_id = ?, message_id = ?, thread_id = ? WHERE id = ?",
-    [channelId, messageId, threadId ?? null, id],
+    "UPDATE pending_requests SET channel_id = ?, message_id = ?, thread_id = ?, pending_channel_id = ?, pending_message_id = ? WHERE id = ?",
+    [channelId, messageId, threadId ?? null, pendingChannelId ?? null, pendingMessageId ?? null, id],
   );
 }
 

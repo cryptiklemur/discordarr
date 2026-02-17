@@ -183,13 +183,12 @@ async function pollUnpostedPendingRequests(client: Client, logger: ReturnType<ty
       }
 
       const config = loadConfig();
-      const channelId = config.PENDING_CHANNEL_ID
-        ?? (pending.mediaType === "movie"
-          ? config.MOVIE_CHANNEL_ID ?? config.REQUEST_CHANNEL_ID
-          : config.TV_CHANNEL_ID ?? config.REQUEST_CHANNEL_ID);
+      const requestChannelId = pending.mediaType === "movie"
+        ? config.MOVIE_CHANNEL_ID ?? config.REQUEST_CHANNEL_ID
+        : config.TV_CHANNEL_ID ?? config.REQUEST_CHANNEL_ID;
 
-      const channel = (await client.channels.fetch(channelId)) as TextChannel | null;
-      if (!channel) continue;
+      const requestChannel = (await client.channels.fetch(requestChannelId)) as TextChannel | null;
+      if (!requestChannel) continue;
 
       const pendingEmbed = buildPendingRequestEmbed(
         pending.id,
@@ -199,14 +198,15 @@ async function pollUnpostedPendingRequests(client: Client, logger: ReturnType<ty
         pending.is4k,
         pending.seasons,
       );
-      const message = await channel.send({
+
+      const requestMessage = await requestChannel.send({
         embeds: pendingEmbed.embeds,
-        components: pendingEmbed.components,
+        components: config.PENDING_CHANNEL_ID ? [] : pendingEmbed.components,
       });
 
       let threadId: string | undefined;
       try {
-        const thread = await message.startThread({
+        const thread = await requestMessage.startThread({
           name: `${pending.title} - Request`,
           autoArchiveDuration: 1440,
         });
@@ -215,7 +215,22 @@ async function pollUnpostedPendingRequests(client: Client, logger: ReturnType<ty
         // thread creation may fail
       }
 
-      updatePendingMessage(pending.id, channel.id, message.id, threadId);
+      let pendingChannelId: string | undefined;
+      let pendingMessageId: string | undefined;
+
+      if (config.PENDING_CHANNEL_ID) {
+        const pendingChannel = (await client.channels.fetch(config.PENDING_CHANNEL_ID)) as TextChannel | null;
+        if (pendingChannel) {
+          const pendingMessage = await pendingChannel.send({
+            embeds: pendingEmbed.embeds,
+            components: pendingEmbed.components,
+          });
+          pendingChannelId = pendingChannel.id;
+          pendingMessageId = pendingMessage.id;
+        }
+      }
+
+      updatePendingMessage(pending.id, requestChannel.id, requestMessage.id, threadId, pendingChannelId, pendingMessageId);
 
       logger.info({ pendingId: pending.id, title: pending.title }, "Posted pending request from bot");
     }

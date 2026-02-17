@@ -1,5 +1,5 @@
 import { EmbedBuilder, MessageFlags } from "discord.js";
-import type { ButtonInteraction, StringSelectMenuInteraction } from "discord.js";
+import type { ButtonInteraction, StringSelectMenuInteraction, TextChannel } from "discord.js";
 import { getOverseerr } from "../services/overseerr.js";
 import { getOverseerrUser, canManageRequests } from "../utils/permissions.js";
 import { getLogger } from "../logger.js";
@@ -103,6 +103,21 @@ export default async function handleAdminApprove(
         embeds: [updatedEmbed],
         components: [],
       });
+
+      if (pending.channelId && pending.messageId && pending.pendingMessageId) {
+        try {
+          const requestChannel = (await btn.client.channels.fetch(pending.channelId)) as TextChannel | null;
+          const requestMessage = requestChannel ? await requestChannel.messages.fetch(pending.messageId) : null;
+          if (requestMessage) {
+            await requestMessage.edit({
+              embeds: [updatedEmbed],
+              components: [],
+            });
+          }
+        } catch {
+          // request channel message update failed
+        }
+      }
     }
 
     if (pending.discordUserId) {
@@ -115,11 +130,16 @@ export default async function handleAdminApprove(
       }
     }
 
-    if (btn.message.thread) {
-      const ping = pending.discordUserId ? `<@${pending.discordUserId}> ` : "";
-      await btn.message.thread
-        .send(`${ping}Request approved by ${btn.user.username}.`)
-        .catch(() => {});
+    if (pending.threadId) {
+      try {
+        const thread = await btn.client.channels.fetch(pending.threadId);
+        if (thread?.isThread()) {
+          const ping = pending.discordUserId ? `<@${pending.discordUserId}> ` : "";
+          await thread.send(`${ping}Request approved by ${btn.user.username}.`);
+        }
+      } catch {
+        // thread message failed
+      }
     }
 
     logger.info({ pendingId, requestId, admin: btn.user.id }, "Request approved");

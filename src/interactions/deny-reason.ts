@@ -1,5 +1,5 @@
 import { EmbedBuilder, MessageFlags } from "discord.js";
-import type { ModalSubmitInteraction } from "discord.js";
+import type { ModalSubmitInteraction, TextChannel } from "discord.js";
 import { getOverseerr } from "../services/overseerr.js";
 import { getOverseerrUser, canManageRequests } from "../utils/permissions.js";
 import { getLogger } from "../logger.js";
@@ -61,6 +61,21 @@ export default async function handleDenyReason(
         embeds: [updatedEmbed],
         components: [],
       });
+
+      if (pending.channelId && pending.messageId && pending.pendingMessageId) {
+        try {
+          const requestChannel = (await interaction.client.channels.fetch(pending.channelId)) as TextChannel | null;
+          const requestMessage = requestChannel ? await requestChannel.messages.fetch(pending.messageId) : null;
+          if (requestMessage) {
+            await requestMessage.edit({
+              embeds: [updatedEmbed],
+              components: [],
+            });
+          }
+        } catch {
+          // request channel message update failed
+        }
+      }
     }
 
     if (pending.discordUserId) {
@@ -73,12 +88,19 @@ export default async function handleDenyReason(
       }
     }
 
-    if (interaction.message?.thread) {
-      const ping = pending.discordUserId ? `<@${pending.discordUserId}> ` : "";
-      const threadMsg = reason
-        ? `${ping}Request denied by ${interaction.user.username}. Reason: ${reason}`
-        : `${ping}Request denied by ${interaction.user.username}.`;
-      await interaction.message.thread.send(threadMsg).catch(() => {});
+    if (pending.threadId) {
+      try {
+        const thread = await interaction.client.channels.fetch(pending.threadId);
+        if (thread?.isThread()) {
+          const ping = pending.discordUserId ? `<@${pending.discordUserId}> ` : "";
+          const threadMsg = reason
+            ? `${ping}Request denied by ${interaction.user.username}. Reason: ${reason}`
+            : `${ping}Request denied by ${interaction.user.username}.`;
+          await thread.send(threadMsg);
+        }
+      } catch {
+        // thread message failed
+      }
     }
 
     logger.info({ pendingId, reason, admin: interaction.user.id }, "Request denied");

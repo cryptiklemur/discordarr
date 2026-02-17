@@ -64,7 +64,9 @@ PUBLIC_URL=
 | `REQUEST_CHANNEL_ID` | Yes | | Channel for request embeds |
 | `MOVIE_CHANNEL_ID` | No | | Separate channel for movie requests (falls back to `REQUEST_CHANNEL_ID`) |
 | `TV_CHANNEL_ID` | No | | Separate channel for TV requests (falls back to `REQUEST_CHANNEL_ID`) |
+| `PENDING_CHANNEL_ID` | No | | Separate channel for unapproved requests (falls back to request channel) |
 | `OVERSEERR_URL` | Yes | | Overseerr instance URL |
+| `PUBLIC_OVERSEERR_URL` | No | | Public-facing Overseerr URL for redirects (falls back to `OVERSEERR_URL`) |
 | `OVERSEERR_API_KEY` | Yes | | Overseerr API key |
 | `SONARR_URL` | Yes | | Sonarr instance URL |
 | `SONARR_API_KEY` | Yes | | Sonarr API key |
