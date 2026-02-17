@@ -66,19 +66,22 @@ export async function checkAvailability(client: Client): Promise<void> {
         try {
           const thread = await client.channels.fetch(request.threadId);
           if (thread?.isThread()) {
-            await thread.send(`<@${request.discordUserId}> **${request.title}** is now available!`);
+            const ping = request.discordUserId ? `<@${request.discordUserId}> ` : "";
+            await thread.send(`${ping}**${request.title}** is now available!`);
           }
         } catch (error) {
           logger.debug({ error }, "Failed to ping user in thread");
         }
       }
 
-      try {
-        const discordUser = await client.users.fetch(request.discordUserId);
-        const dmEmbed = buildAvailableDmEmbed(request.title, request.posterPath);
-        await discordUser.send({ embeds: [dmEmbed] });
-      } catch (error) {
-        logger.debug({ error }, "Failed to send availability DM");
+      if (request.discordUserId) {
+        try {
+          const discordUser = await client.users.fetch(request.discordUserId);
+          const dmEmbed = buildAvailableDmEmbed(request.title, request.posterPath);
+          await discordUser.send({ embeds: [dmEmbed] });
+        } catch (error) {
+          logger.debug({ error }, "Failed to send availability DM");
+        }
       }
 
       removeTrackedRequest(request.requestId);

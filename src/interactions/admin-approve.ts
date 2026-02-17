@@ -105,17 +105,20 @@ export default async function handleAdminApprove(
       });
     }
 
-    try {
-      const requester = await btn.client.users.fetch(pending.discordUserId);
-      const dmEmbed = buildApprovedDmEmbed(pending.title, pending.posterPath);
-      await requester.send({ embeds: [dmEmbed] });
-    } catch {
-      // DMs may be disabled
+    if (pending.discordUserId) {
+      try {
+        const requester = await btn.client.users.fetch(pending.discordUserId);
+        const dmEmbed = buildApprovedDmEmbed(pending.title, pending.posterPath);
+        await requester.send({ embeds: [dmEmbed] });
+      } catch {
+        // DMs may be disabled
+      }
     }
 
     if (btn.message.thread) {
+      const ping = pending.discordUserId ? `<@${pending.discordUserId}> ` : "";
       await btn.message.thread
-        .send(`<@${pending.discordUserId}> Request approved by ${btn.user.username}.`)
+        .send(`${ping}Request approved by ${btn.user.username}.`)
         .catch(() => {});
     }
 

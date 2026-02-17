@@ -9,7 +9,7 @@ export interface TrackedRequest {
   tmdbId: number;
   tvdbId?: number;
   mediaType: "movie" | "tv";
-  discordUserId: string;
+  discordUserId?: string;
   channelId?: string;
   messageId?: string;
   threadId?: string;
@@ -24,7 +24,7 @@ interface DbRow {
   tmdb_id: number;
   tvdb_id: number | null;
   media_type: string;
-  discord_user_id: string;
+  discord_user_id: string | null;
   channel_id: string | null;
   message_id: string | null;
   thread_id: string | null;
@@ -48,7 +48,7 @@ function getDb(): Database {
       tmdb_id INTEGER NOT NULL,
       tvdb_id INTEGER,
       media_type TEXT NOT NULL,
-      discord_user_id TEXT NOT NULL,
+      discord_user_id TEXT,
       channel_id TEXT,
       message_id TEXT,
       thread_id TEXT,
@@ -64,7 +64,7 @@ function getDb(): Database {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       tmdb_id INTEGER NOT NULL,
       media_type TEXT NOT NULL CHECK(media_type IN ('movie', 'tv')),
-      discord_user_id TEXT NOT NULL,
+      discord_user_id TEXT,
       overseerr_user_id INTEGER NOT NULL,
       is_4k INTEGER NOT NULL DEFAULT 0,
       seasons TEXT,
@@ -98,7 +98,7 @@ function rowToRequest(row: DbRow): TrackedRequest {
     tmdbId: row.tmdb_id,
     tvdbId: row.tvdb_id ?? undefined,
     mediaType: row.media_type as "movie" | "tv",
-    discordUserId: row.discord_user_id,
+    discordUserId: row.discord_user_id ?? undefined,
     channelId: row.channel_id ?? undefined,
     messageId: row.message_id ?? undefined,
     threadId: row.thread_id ?? undefined,
@@ -119,7 +119,7 @@ export function trackRequest(request: TrackedRequest): void {
       request.tmdbId,
       request.tvdbId ?? null,
       request.mediaType,
-      request.discordUserId,
+      request.discordUserId ?? null,
       request.channelId ?? null,
       request.messageId ?? null,
       request.threadId ?? null,
@@ -167,7 +167,7 @@ export interface PendingRequest {
   id: number;
   tmdbId: number;
   mediaType: "movie" | "tv";
-  discordUserId: string;
+  discordUserId?: string;
   overseerrUserId: number;
   is4k: boolean;
   seasons?: number[];
@@ -183,7 +183,7 @@ interface PendingDbRow {
   id: number;
   tmdb_id: number;
   media_type: string;
-  discord_user_id: string;
+  discord_user_id: string | null;
   overseerr_user_id: number;
   is_4k: number;
   seasons: string | null;
@@ -200,7 +200,7 @@ function rowToPending(row: PendingDbRow): PendingRequest {
     id: row.id,
     tmdbId: row.tmdb_id,
     mediaType: row.media_type as "movie" | "tv",
-    discordUserId: row.discord_user_id,
+    discordUserId: row.discord_user_id ?? undefined,
     overseerrUserId: row.overseerr_user_id,
     is4k: row.is_4k === 1,
     seasons: row.seasons ? JSON.parse(row.seasons) : undefined,
@@ -221,7 +221,7 @@ export function createPendingRequest(pending: Omit<PendingRequest, "id">): numbe
     [
       pending.tmdbId,
       pending.mediaType,
-      pending.discordUserId,
+      pending.discordUserId ?? null,
       pending.overseerrUserId,
       pending.is4k ? 1 : 0,
       pending.seasons ? JSON.stringify(pending.seasons) : null,
@@ -285,8 +285,15 @@ export async function hydrateRequestStore(_client: Client): Promise<void> {
       const existing = getTrackedRequest(request.id);
       if (existing) continue;
 
-      const discordId = request.requestedBy.settings?.discordId;
-      if (!discordId) continue;
+      let discordId = request.requestedBy.settings?.discordId;
+      if (!discordId) {
+        try {
+          const notifSettings = await overseerr.getUserNotificationSettings(request.requestedBy.id);
+          discordId = notifSettings.discordId;
+        } catch {
+          // no discord ID available
+        }
+      }
 
       let title = "Unknown";
       let posterPath: string | undefined;

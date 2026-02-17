@@ -53,18 +53,21 @@ export default async function handleDenyReason(
       });
     }
 
-    try {
-      const requester = await interaction.client.users.fetch(pending.discordUserId);
-      const dmEmbed = buildDeniedDmEmbed(pending.title, pending.posterPath, reason);
-      await requester.send({ embeds: [dmEmbed] });
-    } catch {
-      // DMs may be disabled
+    if (pending.discordUserId) {
+      try {
+        const requester = await interaction.client.users.fetch(pending.discordUserId);
+        const dmEmbed = buildDeniedDmEmbed(pending.title, pending.posterPath, reason);
+        await requester.send({ embeds: [dmEmbed] });
+      } catch {
+        // DMs may be disabled
+      }
     }
 
     if (interaction.message?.thread) {
+      const ping = pending.discordUserId ? `<@${pending.discordUserId}> ` : "";
       const threadMsg = reason
-        ? `<@${pending.discordUserId}> Request denied by ${interaction.user.username}. Reason: ${reason}`
-        : `<@${pending.discordUserId}> Request denied by ${interaction.user.username}.`;
+        ? `${ping}Request denied by ${interaction.user.username}. Reason: ${reason}`
+        : `${ping}Request denied by ${interaction.user.username}.`;
       await interaction.message.thread.send(threadMsg).catch(() => {});
     }
 

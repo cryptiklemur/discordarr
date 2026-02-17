@@ -136,7 +136,8 @@ async function notifyDownloadComplete(
     if (!thread) return;
 
     for (const item of completedItems) {
-      await thread.send(`<@${request.discordUserId}> **${item}** has finished downloading!`);
+      const ping = request.discordUserId ? `<@${request.discordUserId}> ` : "";
+      await thread.send(`${ping}**${item}** has finished downloading!`);
     }
   } catch (error) {
     logger.debug({ error, threadId: request.threadId }, "Failed to post download completion to thread");

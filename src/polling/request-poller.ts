@@ -7,6 +7,7 @@ import {
   getTrackedRequest,
   getPendingByOverseerrRequestId,
   trackRequest,
+  createPendingRequest,
   getUnpostedPendingRequests,
   updatePendingMessage,
 } from "../store/request-store.js";
@@ -41,19 +42,15 @@ async function pollOverseerrRequests(client: Client, logger: ReturnType<typeof g
       if (existing?.messageId) continue;
       if (getPendingByOverseerrRequestId(request.id)) continue;
 
-      const discordId = request.requestedBy.settings?.discordId;
-      if (!discordId) {
+      let resolvedDiscordId = request.requestedBy.settings?.discordId;
+      if (!resolvedDiscordId) {
         try {
           const notifSettings = await overseerr.getUserNotificationSettings(request.requestedBy.id);
-          if (!notifSettings.discordId) continue;
-          request.requestedBy.settings = { ...request.requestedBy.settings, discordId: notifSettings.discordId };
+          resolvedDiscordId = notifSettings.discordId;
         } catch {
-          continue;
+          // no discord ID available — still post the request
         }
       }
-
-      const resolvedDiscordId = request.requestedBy.settings?.discordId;
-      if (!resolvedDiscordId) continue;
 
       let title = "Unknown";
       let posterPath: string | undefined;
@@ -127,9 +124,19 @@ async function pollOverseerrRequests(client: Client, logger: ReturnType<typeof g
 
         logger.info({ requestId: request.id, title }, "Posted approved request");
       } else if (request.status === RequestStatus.PENDING) {
-        // Pending requests from Overseerr web UI shouldn't happen often
-        // since the admin API key auto-approves, but handle it just in case
-        logger.info({ requestId: request.id, title }, "Skipping pending Overseerr request (not bot-originated)");
+        const pendingId = createPendingRequest({
+          tmdbId: request.media.tmdbId,
+          mediaType: request.type,
+          discordUserId: resolvedDiscordId,
+          overseerrUserId: request.requestedBy.id,
+          is4k: request.is4k,
+          seasons: request.seasons?.map((s) => s.seasonNumber),
+          title,
+          posterPath,
+          overseerrRequestId: request.id,
+        });
+
+        logger.info({ requestId: request.id, pendingId, title }, "Created pending record for Overseerr request");
       }
     }
   } catch (error) {
@@ -158,12 +165,21 @@ async function pollUnpostedPendingRequests(client: Client, logger: ReturnType<ty
         continue;
       }
 
-      let displayName = pending.discordUserId;
-      try {
-        const user = await client.users.fetch(pending.discordUserId);
-        displayName = user.displayName;
-      } catch {
-        // fall back to discord ID
+      let displayName: string;
+      if (pending.discordUserId) {
+        try {
+          const user = await client.users.fetch(pending.discordUserId);
+          displayName = user.displayName;
+        } catch {
+          displayName = pending.discordUserId;
+        }
+      } else {
+        try {
+          const overseerrUser = await overseerr.getUser(pending.overseerrUserId);
+          displayName = overseerrUser.displayName;
+        } catch {
+          displayName = "Unknown User";
+        }
       }
 
       const config = loadConfig();
