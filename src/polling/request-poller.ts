@@ -12,8 +12,6 @@ import {
 } from "../store/request-store.js";
 import { buildAutoApprovedEmbed, buildPendingRequestEmbed } from "../embeds/admin-request.js";
 
-const startTime = new Date();
-
 export async function pollNewRequests(client: Client): Promise<void> {
   const logger = getLogger();
 
@@ -32,9 +30,6 @@ async function pollOverseerrRequests(client: Client, logger: ReturnType<typeof g
     });
 
     for (const request of response.results) {
-      const requestDate = new Date(request.createdAt);
-      if (requestDate < startTime) continue;
-
       if (
         request.status === RequestStatus.DECLINED ||
         request.media.status === MediaStatus.AVAILABLE
@@ -42,7 +37,8 @@ async function pollOverseerrRequests(client: Client, logger: ReturnType<typeof g
         continue;
       }
 
-      if (getTrackedRequest(request.id)) continue;
+      const existing = getTrackedRequest(request.id);
+      if (existing?.messageId) continue;
       if (getPendingByOverseerrRequestId(request.id)) continue;
 
       const discordId = request.requestedBy.settings?.discordId;
@@ -97,7 +93,7 @@ async function pollOverseerrRequests(client: Client, logger: ReturnType<typeof g
           request.type,
           request.is4k,
           request.seasons?.map((s) => ({ seasonNumber: s.seasonNumber })),
-          requestDate,
+          new Date(request.createdAt),
         );
         const message = await channel.send({
           embeds: autoEmbed.embeds,

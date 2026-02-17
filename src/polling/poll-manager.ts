@@ -15,12 +15,13 @@ export function startPolling(client: Client): void {
 
   const queueMs = config.POLL_INTERVAL_SECONDS * 1000;
   const availabilityMs = config.AVAILABILITY_CHECK_INTERVAL_SECONDS * 1000;
-  const requestPollMs = availabilityMs;
 
   logger.info(
     { queueInterval: config.POLL_INTERVAL_SECONDS, availabilityInterval: config.AVAILABILITY_CHECK_INTERVAL_SECONDS },
     "Starting polling",
   );
+
+  pollNewRequests(client).catch((error) => logger.error({ error }, "Initial request poll error"));
 
   queueInterval = setInterval(async () => {
     try {
@@ -44,7 +45,7 @@ export function startPolling(client: Client): void {
     } catch (error) {
       logger.error({ error }, "Request poll error");
     }
-  }, requestPollMs);
+  }, queueMs);
 }
 
 export function stopPolling(): void {
