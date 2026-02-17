@@ -36,6 +36,56 @@ interface DbRow {
 
 let db: Database;
 
+function migrateNullableDiscordUserId(db: Database): void {
+  const info = db.prepare("PRAGMA table_info(tracked_requests)").all() as { name: string; notnull: number }[];
+  const col = info.find((c) => c.name === "discord_user_id");
+  if (!col || col.notnull === 0) return;
+
+  db.run("BEGIN TRANSACTION");
+  try {
+    db.run(`CREATE TABLE tracked_requests_new (
+      request_id INTEGER PRIMARY KEY,
+      tmdb_id INTEGER NOT NULL,
+      tvdb_id INTEGER,
+      media_type TEXT NOT NULL,
+      discord_user_id TEXT,
+      channel_id TEXT,
+      message_id TEXT,
+      thread_id TEXT,
+      last_progress REAL,
+      poster_path TEXT,
+      title TEXT NOT NULL,
+      is_4k INTEGER NOT NULL DEFAULT 0
+    )`);
+    db.run("INSERT INTO tracked_requests_new SELECT * FROM tracked_requests");
+    db.run("DROP TABLE tracked_requests");
+    db.run("ALTER TABLE tracked_requests_new RENAME TO tracked_requests");
+
+    db.run(`CREATE TABLE pending_requests_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tmdb_id INTEGER NOT NULL,
+      media_type TEXT NOT NULL CHECK(media_type IN ('movie', 'tv')),
+      discord_user_id TEXT,
+      overseerr_user_id INTEGER NOT NULL,
+      is_4k INTEGER NOT NULL DEFAULT 0,
+      seasons TEXT,
+      title TEXT NOT NULL,
+      poster_path TEXT,
+      channel_id TEXT,
+      message_id TEXT,
+      thread_id TEXT,
+      overseerr_request_id INTEGER
+    )`);
+    db.run("INSERT INTO pending_requests_new SELECT * FROM pending_requests");
+    db.run("DROP TABLE pending_requests");
+    db.run("ALTER TABLE pending_requests_new RENAME TO pending_requests");
+
+    db.run("COMMIT");
+  } catch {
+    db.run("ROLLBACK");
+  }
+}
+
 function getDb(): Database {
   if (db) return db;
 
@@ -88,6 +138,8 @@ function getDb(): Database {
   } catch {
     // column already exists
   }
+
+  migrateNullableDiscordUserId(db);
 
   return db;
 }
