@@ -160,6 +160,15 @@ function getDb(): Database {
 
   migrateNullableDiscordUserId(db);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS sent_notifications (
+      request_id INTEGER NOT NULL,
+      item_key TEXT NOT NULL,
+      sent_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (request_id, item_key)
+    )
+  `);
+
   return db;
 }
 
@@ -209,6 +218,7 @@ export function getTrackedRequest(requestId: number): TrackedRequest | undefined
 
 export function removeTrackedRequest(requestId: number): void {
   getDb().run("DELETE FROM tracked_requests WHERE request_id = ?", [requestId]);
+  getDb().run("DELETE FROM sent_notifications WHERE request_id = ?", [requestId]);
 }
 
 export function getAllTrackedRequests(): TrackedRequest[] {
@@ -227,6 +237,22 @@ export function updateLastProgress(requestId: number, progress: number): void {
 
 export function updateTvdbId(requestId: number, tvdbId: number): void {
   getDb().run("UPDATE tracked_requests SET tvdb_id = ? WHERE request_id = ?", [tvdbId, requestId]);
+}
+
+export function hasNotificationBeenSent(requestId: number, itemKey: string): boolean {
+  const row = getDb().prepare("SELECT 1 FROM sent_notifications WHERE request_id = ? AND item_key = ?").get(requestId, itemKey);
+  return row !== null;
+}
+
+export function recordSentNotification(requestId: number, itemKey: string): void {
+  getDb().run(
+    "INSERT OR IGNORE INTO sent_notifications (request_id, item_key) VALUES (?, ?)",
+    [requestId, itemKey],
+  );
+}
+
+export function clearSentNotifications(requestId: number): void {
+  getDb().run("DELETE FROM sent_notifications WHERE request_id = ?", [requestId]);
 }
 
 export function getTvRequestsMissingTvdbId(): TrackedRequest[] {

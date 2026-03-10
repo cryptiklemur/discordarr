@@ -5,6 +5,8 @@ import { getRadarr } from "../services/radarr.js";
 import {
   getAllTrackedRequests,
   updateLastProgress,
+  hasNotificationBeenSent,
+  recordSentNotification,
   type TrackedRequest,
 } from "../store/request-store.js";
 import { EmbedColor } from "../utils/constants.js";
@@ -103,10 +105,10 @@ export async function pollQueues(client: Client): Promise<void> {
 
     const previousItems = activeDownloads.get(request.requestId);
     if (previousItems) {
-      const completed: string[] = [];
+      const completed: { key: string; label: string }[] = [];
       for (const key of previousItems) {
         if (!currentItems.has(key)) {
-          completed.push(itemLabels.get(key) ?? key);
+          completed.push({ key, label: itemLabels.get(key) ?? key });
         }
       }
 
@@ -141,18 +143,22 @@ export async function pollQueues(client: Client): Promise<void> {
 async function notifyDownloadComplete(
   client: Client,
   request: TrackedRequest,
-  completedItems: string[],
+  completedItems: { key: string; label: string }[],
   logger: ReturnType<typeof getLogger>,
 ): Promise<void> {
   if (!request.threadId) return;
+
+  const unsent = completedItems.filter((item) => !hasNotificationBeenSent(request.requestId, item.key));
+  if (unsent.length === 0) return;
 
   try {
     const thread = (await client.channels.fetch(request.threadId)) as ThreadChannel | null;
     if (!thread) return;
 
-    for (const item of completedItems) {
+    for (const item of unsent) {
       const ping = request.discordUserId ? `<@${request.discordUserId}> ` : "";
-      await thread.send(`${ping}**${item}** has finished downloading!`);
+      await thread.send(`${ping}**${item.label}** has finished downloading!`);
+      recordSentNotification(request.requestId, item.key);
     }
   } catch (error) {
     logger.debug({ error, threadId: request.threadId }, "Failed to post download completion to thread");
