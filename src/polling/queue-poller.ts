@@ -38,6 +38,12 @@ export async function pollQueues(client: Client): Promise<void> {
   for (const request of tracked) {
     if (!request.channelId || !request.messageId) continue;
 
+    const hasQueueData =
+      (request.mediaType === "movie" && radarrQueue !== undefined) ||
+      (request.mediaType === "tv" && sonarrQueue !== undefined);
+
+    if (!hasQueueData) continue;
+
     let progress: number | undefined;
     let size: number | undefined;
     let sizeLeft: number | undefined;
