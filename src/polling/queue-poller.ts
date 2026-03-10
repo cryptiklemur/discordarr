@@ -92,6 +92,15 @@ export async function pollQueues(client: Client): Promise<void> {
       }
     }
 
+    if (downloading && currentItems.size === 0) {
+      caughtUpRequests.delete(request.requestId);
+      if (progress !== undefined) {
+        updateLastProgress(request.requestId, progress);
+      }
+      await updateParentEmbed(client, request, { progress, size, sizeLeft, eta, quality });
+      continue;
+    }
+
     const previousItems = activeDownloads.get(request.requestId);
     if (previousItems) {
       const completed: string[] = [];
