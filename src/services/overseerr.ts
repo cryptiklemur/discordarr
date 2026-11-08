@@ -279,10 +279,15 @@ class OverseerrService {
 
       const checks = response.results.map(async (user) => {
         try {
-          const notifSettings = await this.client.get<{ discordId?: string }>(
-            `/api/v1/user/${user.id}/settings/notifications`,
-          );
-          if (notifSettings.discordId === discordId) {
+          const notifSettings = await this.client.get<{
+            discordId?: string;
+            discordIds?: string[];
+          }>(`/api/v1/user/${user.id}/settings/notifications`);
+          const linkedIds = notifSettings.discordIds ?? [];
+          if (notifSettings.discordId) {
+            linkedIds.push(notifSettings.discordId);
+          }
+          if (linkedIds.includes(discordId)) {
             user.settings = { ...user.settings, discordId };
             return user;
           }
