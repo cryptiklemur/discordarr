@@ -15,21 +15,22 @@ const command: Command = {
     const logger = getLogger();
     const config = loadConfig();
 
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
     const existingUser = await getOverseerrUser(interaction.user.id);
     if (existingUser) {
-      await interaction.reply({
+      await interaction.editReply({
         content: `Your account is already linked as **${existingUser.displayName}**.`,
-        flags: MessageFlags.Ephemeral,
       });
       return;
     }
 
     const state = createLinkSession(interaction.user.id);
-    const linkUrl = `${config.OVERSEERR_URL}/login?callbackUrl=${encodeURIComponent(`${config.PUBLIC_URL}/auth/callback?state=${state}`)}`;
+    const overseerrUrl = config.PUBLIC_OVERSEERR_URL ?? config.OVERSEERR_URL;
+    const linkUrl = `${overseerrUrl}/login?callbackUrl=${encodeURIComponent(`${config.PUBLIC_URL}/auth/callback?state=${state}`)}`;
 
-    await interaction.reply({
+    await interaction.editReply({
       content: `Click the link below to connect your Discord account to Overseerr:\n\n[Link Account](${linkUrl})\n\nThis link expires in 5 minutes.`,
-      flags: MessageFlags.Ephemeral,
     });
 
     registerLinkSession(state, interaction.user.id, async (result) => {
